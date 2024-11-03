@@ -50,6 +50,26 @@ def initialize_database():
             FOREIGN KEY (member_id) REFERENCES team_members (id)
         )
     """)
+# Create Team Members table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS team_members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT
+        )
+    """)
+# Create Task Assignments table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS task_assignments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER,
+            member_id INTEGER,
+            FOREIGN KEY (task_id) REFERENCES tasks (id),
+            FOREIGN KEY (member_id) REFERENCES team_members (id)
+        )
+    """)
+
+  
 
     conn.commit()
     conn.close()
