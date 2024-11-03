@@ -55,7 +55,7 @@ elif choice == "Edit Project":
         cursor.execute("SELECT name, description, start_date, end_date, status FROM projects WHERE id = ?", (project_id,))
         project_data = cursor.fetchone()
         conn.close()
-
+        st.write(project_data)
         # Check if project_data exists before proceeding
         if project_data:
             # Convert start and end dates from string to datetime.date objects, handling None values
