@@ -1,87 +1,115 @@
 import streamlit as st
-import pandas as pd
+import sqlite3
+from database import get_connection, initialize_database
 
-# Sample data
-projects_data = {
-    "Project ID": [1, 2, 3],
-    "Project Name": ["Project A", "Project B", "Project C"],
-    "Status": ["Active", "Inactive", "Active"]
-}
+# Initialize the database
+initialize_database()
 
-documents_data = {
-    "Document ID": [1, 2],
-    "Project ID": [1, 2],
-    "Document Name": ["Doc A", "Doc B"]
-}
+st.title("Project Management App")
 
 # Sidebar for navigation
-st.sidebar.title("Navigation")
-selection = st.sidebar.radio("Go to", ["Projects", "Documents", "Reports", "Categories & Questionnaires"])
+menu = ["Add Project", "Add Task", "Assign Team Member", "View Projects"]
+choice = st.sidebar.selectbox("Menu", menu)
 
-# Projects Page
-if selection == "Projects":
-    st.title("🏗️ Project Hub")
-    st.subheader("View and manage your projects here.")
-    
-    # Display projects in a table
-    projects_df = pd.DataFrame(projects_data)
-    st.dataframe(projects_df)
-    
-    # Add new project
-    st.sidebar.subheader("Create New Project")
-    new_project_name = st.sidebar.text_input("Project Name")
-    new_project_status = st.sidebar.selectbox("Status", ["Active", "Inactive"])
-    
-    if st.sidebar.button("Add Project"):
-        new_id = len(projects_df) + 1
-        new_project = pd.DataFrame({
-            "Project ID": [new_id],
-            "Project Name": [new_project_name],
-            "Status": [new_project_status]
-        })
-        projects_df = pd.concat([projects_df, new_project], ignore_index=True)
-        st.success(f"Project '{new_project_name}' added!")
+if choice == "Add Project":
+    st.subheader("Create a New Project")
 
-# Documents Page
-elif selection == "Documents":
-    st.title("📄 Document Central")
-    st.subheader("Manage your documents efficiently.")
-    
-    # Display documents based on selected projects
-    selected_project = st.selectbox("Select Project", projects_df["Project Name"])
-    filtered_docs = documents_data['Document ID']  # Placeholder for actual filtering logic
-    st.write(f"Documents for {selected_project}: {filtered_docs}")
-    
-    # File upload
-    uploaded_file = st.file_uploader("Upload Document", type=["pdf", "docx"])
-    if uploaded_file is not None:
-        st.success(f"Uploaded '{uploaded_file.name}' successfully!")
+    with st.form("project_form"):
+        project_name = st.text_input("Project Name")
+        description = st.text_area("Description")
+        start_date = st.date_input("Start Date")
+        end_date = st.date_input("End Date")
+        submit_project = st.form_submit_button("Add Project")
 
-# Reports Page
-elif selection == "Reports":
-    st.title("📊 Report Generation")
-    st.subheader("Create and manage reports.")
-    
-    # Step-by-step report creation
-    report_title = st.text_input("Report Title")
-    report_content = st.text_area("Report Content")
-    
-    if st.button("Generate Report"):
-        st.success(f"Report '{report_title}' generated!")
-        # Placeholder for exporting logic
+    if submit_project:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO projects (name, description, start_date, end_date)
+            VALUES (?, ?, ?, ?)
+        """, (project_name, description, str(start_date), str(end_date)))
+        conn.commit()
+        conn.close()
+        st.success(f"Project '{project_name}' added successfully.")
 
-# Categories & Questionnaires Page
-elif selection == "Categories & Questionnaires":
-    st.title("🏷️ Categories & Questionnaires")
-    st.subheader("Manage categories and questionnaires.")
-    
-    # Interactive category management
-    category_name = st.text_input("Category Name")
-    if st.button("Add Category"):
-        st.success(f"Category '{category_name}' added!")
-    
-    # Questionnaire creation
-    questionnaire_title = st.text_input("Questionnaire Title")
-    if st.button("Create Questionnaire"):
-        st.success(f"Questionnaire '{questionnaire_title}' created!")
+elif choice == "Add Task":
+    st.subheader("Create a New Task")
 
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name FROM projects")
+    projects = cursor.fetchall()
+    conn.close()
+
+    project_options = {project[1]: project[0] for project in projects}
+
+    with st.form("task_form"):
+        project_name = st.selectbox("Select Project", list(project_options.keys()))
+        task_name = st.text_input("Task Name")
+        description = st.text_area("Description")
+        submit_task = st.form_submit_button("Add Task")
+
+    if submit_task:
+        project_id = project_options[project_name]
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO tasks (project_id, name, description)
+            VALUES (?, ?, ?)
+        """, (project_id, task_name, description))
+        conn.commit()
+        conn.close()
+        st.success(f"Task '{task_name}' added to project '{project_name}' successfully.")
+
+elif choice == "Assign Team Member":
+    st.subheader("Assign Team Member to Task")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT id, name FROM tasks")
+    tasks = cursor.fetchall()
+
+    cursor.execute("SELECT id, name FROM team_members")
+    members = cursor.fetchall()
+    conn.close()
+
+    task_options = {task[1]: task[0] for task in tasks}
+    member_options = {member[1]: member[0] for member in members}
+
+    with st.form("assignment_form"):
+        task_name = st.selectbox("Select Task", list(task_options.keys()))
+        member_name = st.selectbox("Select Team Member", list(member_options.keys()))
+        submit_assignment = st.form_submit_button("Assign Member")
+
+    if submit_assignment:
+        task_id = task_options[task_name]
+        member_id = member_options[member_name]
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO task_assignments (task_id, member_id)
+            VALUES (?, ?)
+        """, (task_id, member_id))
+        conn.commit()
+        conn.close()
+        st.success(f"Member '{member_name}' assigned to task '{task_name}' successfully.")
+
+elif choice == "View Projects":
+    st.subheader("Project Overview")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, name, description, start_date, end_date, status FROM projects
+    """)
+    projects = cursor.fetchall()
+    conn.close()
+
+    for project in projects:
+        st.write(f"**{project[1]}**")
+        st.write(f"Description: {project[2]}")
+        st.write(f"Start Date: {project[3]}")
+        st.write(f"End Date: {project[4]}")
+        st.write(f"Status: {project[5]}")
+        st.markdown("---")
