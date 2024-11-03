@@ -69,6 +69,8 @@ def initialize_database():
         )
     """)
 
+
+    
   
 
     conn.commit()
