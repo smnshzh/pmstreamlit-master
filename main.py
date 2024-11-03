@@ -34,7 +34,7 @@ if choice == "Add Project":
         st.success(f"Project '{project_name}' added successfully.")
 
 elif choice == "Edit Project":
-    st.subheader("Edit an Existing Project")
+    st.subheader("Edit or Delete an Existing Project")
 
     # Fetch all projects from the database
     conn = get_connection()
@@ -46,8 +46,8 @@ elif choice == "Edit Project":
     project_options = {project[1]: project[0] for project in projects}
 
     if project_options:
-        # Select project to edit
-        project_name = st.selectbox("Select Project to Edit", list(project_options.keys()))
+        # Select project to edit or delete
+        project_name = st.selectbox("Select Project to Edit or Delete", list(project_options.keys()))
         project_id = project_options[project_name]
 
         # Fetch project details
@@ -56,13 +56,12 @@ elif choice == "Edit Project":
         cursor.execute("SELECT name, description, start_date, end_date, status FROM projects WHERE id = ?", (project_id,))
         project_data = cursor.fetchone()
         conn.close()
-        st.write(project_data)
+
         # Check if project_data exists before proceeding
         if project_data:
             # Convert start and end dates from string to datetime.date objects, handling None values
-            if project_data[2] and project_data[3]:
-                start_date = datetime.strptime(project_data[3], "%Y-%m-%d").date() if project_data[2] else date.today()
-                end_date = datetime.strptime(project_data[3], "%Y-%m-%d").date() if project_data[3] else date.today()
+            start_date = datetime.strptime(project_data[2], "%Y-%m-%d").date() if project_data[2] else date.today()
+            end_date = datetime.strptime(project_data[3], "%Y-%m-%d").date() if project_data[3] else date.today()
 
             # Pre-fill form with existing project data
             with st.form("edit_project_form"):
@@ -75,18 +74,34 @@ elif choice == "Edit Project":
                 submit_edit = st.form_submit_button("Update Project")
 
             if submit_edit:
+                # Check if a project with the same name already exists (excluding the current project)
                 conn = get_connection()
                 cursor = conn.cursor()
-                cursor.execute("""
-                    UPDATE projects
-                    SET name = ?, description = ?, start_date = ?, end_date = ?, status = ?
-                    WHERE id = ?
-                """, (new_project_name, new_description, str(new_start_date), str(new_end_date), new_status, project_id))
+                cursor.execute("SELECT id FROM projects WHERE name = ? AND id != ?", (new_project_name, project_id))
+                duplicate_project = cursor.fetchone()
+                
+                if duplicate_project:
+                    st.error("A project with this name already exists. Please choose a different name.")
+                else:
+                    # Proceed with the update if no duplicate name is found
+                    cursor.execute("""
+                        UPDATE projects
+                        SET name = ?, description = ?, start_date = ?, end_date = ?, status = ?
+                        WHERE id = ?
+                    """, (new_project_name, new_description, str(new_start_date), str(new_end_date), new_status, project_id))
+                    conn.commit()
+                    conn.close()
+                    st.success(f"Project '{new_project_name}' updated successfully.")
+
+            # Add delete functionality
+            delete_confirm = st.button("Delete Project")
+            if delete_confirm:
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute("DELETE FROM projects WHERE id = ?", (project_id,))
                 conn.commit()
                 conn.close()
-                st.success(f"Project '{new_project_name}' updated successfully.")
-        else:
-            st.error("Could not find project details. Please try another project.")
+                st.success(f"Project '{project_name}' deleted successfully.")
     else:
         st.warning("No projects found. Please add a project first.")
 
