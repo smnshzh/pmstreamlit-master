@@ -34,7 +34,12 @@ if selection == "Projects":
     
     if st.sidebar.button("Add Project"):
         new_id = len(projects_df) + 1
-        projects_df = projects_df.append({"Project ID": new_id, "Project Name": new_project_name, "Status": new_project_status}, ignore_index=True)
+        new_project = pd.DataFrame({
+            "Project ID": [new_id],
+            "Project Name": [new_project_name],
+            "Status": [new_project_status]
+        })
+        projects_df = pd.concat([projects_df, new_project], ignore_index=True)
         st.success(f"Project '{new_project_name}' added!")
 
 # Documents Page
