@@ -11,6 +11,37 @@ st.title("Project Management App")
 # Sidebar for navigation
 menu = ["Add Project", "Add Task", "Assign Team Member", "View Projects", "Edit Project"]
 choice = st.sidebar.selectbox("Menu", menu)
+if choice == "Add Project":
+    st.subheader("Add a New Project")
+
+    with st.form("add_project_form"):
+        project_name = st.text_input("Project Name")
+        description = st.text_area("Description")
+        start_date = st.date_input("Start Date", value=date.today())
+        end_date = st.date_input("End Date", value=date.today())
+        status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
+
+        submit_add = st.form_submit_button("Add Project")
+
+    if submit_add:
+        # Check if a project with the same name already exists
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM projects WHERE name = ?", (project_name,))
+        duplicate_project = cursor.fetchone()
+
+        if duplicate_project:
+            st.error("A project with this name already exists. Please choose a different name.")
+        else:
+            # Insert the new project into the database if no duplicate name is found
+            cursor.execute("""
+                INSERT INTO projects (name, description, start_date, end_date, status)
+                VALUES (?, ?, ?, ?, ?)
+            """, (project_name, description, str(start_date), str(end_date), status))
+            conn.commit()
+            conn.close()
+            st.success(f"Project '{project_name}' added successfully.")
+
 
 elif choice == "Add Project":
     st.subheader("Add a New Project")
