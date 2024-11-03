@@ -9,8 +9,10 @@ initialize_database()
 st.title("Project Management App")
 
 # Sidebar for navigation
-menu = ["Add Project", "Add Task", "Assign Team Member", "View Projects", "Edit Project"]
+menu = ["Add Project", "Add Task", "Assign Team Member", "View Projects", "Edit Project", "Add Team", "Add Member"]
 choice = st.sidebar.selectbox("Menu", menu)
+
+# Function to add a new project
 if choice == "Add Project":
     st.subheader("Add a New Project")
 
@@ -24,7 +26,6 @@ if choice == "Add Project":
         submit_add = st.form_submit_button("Add Project")
 
     if submit_add:
-        # Check if a project with the same name already exists
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM projects WHERE name = ?", (project_name,))
@@ -33,51 +34,15 @@ if choice == "Add Project":
         if duplicate_project:
             st.error("A project with this name already exists. Please choose a different name.")
         else:
-            # Insert the new project into the database if no duplicate name is found
-            cursor.execute("""
-                INSERT INTO projects (name, description, start_date, end_date, status)
-                VALUES (?, ?, ?, ?, ?)
-            """, (project_name, description, str(start_date), str(end_date), status))
+            cursor.execute("""INSERT INTO projects (name, description, start_date, end_date, status) VALUES (?, ?, ?, ?, ?)""",
+                           (project_name, description, str(start_date), str(end_date), status))
             conn.commit()
             conn.close()
             st.success(f"Project '{project_name}' added successfully.")
 
-
-elif choice == "Add Project":
-    st.subheader("Add a New Project")
-
-    with st.form("add_project_form"):
-        project_name = st.text_input("Project Name")
-        description = st.text_area("Description")
-        start_date = st.date_input("Start Date", value=date.today())
-        end_date = st.date_input("End Date", value=date.today())
-        status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"])
-
-        submit_add = st.form_submit_button("Add Project")
-
-    if submit_add:
-        # Check if a project with the same name already exists
-        conn = get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id FROM projects WHERE name = ?", (project_name,))
-        duplicate_project = cursor.fetchone()
-
-        if duplicate_project:
-            st.error("A project with this name already exists. Please choose a different name.")
-        else:
-            # Insert the new project into the database if no duplicate name is found
-            cursor.execute("""
-                INSERT INTO projects (name, description, start_date, end_date, status)
-                VALUES (?, ?, ?, ?, ?)
-            """, (project_name, description, str(start_date), str(end_date), status))
-            conn.commit()
-            conn.close()
-            st.success(f"Project '{project_name}' added successfully.")
-
+# Function to edit an existing project
 elif choice == "Edit Project":
     st.subheader("Edit or Delete an Existing Project")
-
-    # Fetch all projects from the database
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT id, name FROM projects")
@@ -87,24 +52,19 @@ elif choice == "Edit Project":
     project_options = {project[1]: project[0] for project in projects}
 
     if project_options:
-        # Select project to edit or delete
         project_name = st.selectbox("Select Project to Edit or Delete", list(project_options.keys()))
         project_id = project_options[project_name]
 
-        # Fetch project details
         conn = get_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT name, description, start_date, end_date, status FROM projects WHERE id = ?", (project_id,))
         project_data = cursor.fetchone()
         conn.close()
 
-        # Check if project_data exists before proceeding
         if project_data:
-            # Convert start and end dates from string to datetime.date objects, handling None values
             start_date = datetime.strptime(project_data[2], "%Y-%m-%d").date() if project_data[2] else date.today()
             end_date = datetime.strptime(project_data[3], "%Y-%m-%d").date() if project_data[3] else date.today()
 
-            # Pre-fill form with existing project data
             with st.form("edit_project_form"):
                 new_project_name = st.text_input("Project Name", value=project_data[0])
                 new_description = st.text_area("Description", value=project_data[1])
@@ -115,26 +75,20 @@ elif choice == "Edit Project":
                 submit_edit = st.form_submit_button("Update Project")
 
             if submit_edit:
-                # Check if a project with the same name already exists (excluding the current project)
                 conn = get_connection()
                 cursor = conn.cursor()
                 cursor.execute("SELECT id FROM projects WHERE name = ? AND id != ?", (new_project_name, project_id))
                 duplicate_project = cursor.fetchone()
-                
+
                 if duplicate_project:
                     st.error("A project with this name already exists. Please choose a different name.")
                 else:
-                    # Proceed with the update if no duplicate name is found
-                    cursor.execute("""
-                        UPDATE projects
-                        SET name = ?, description = ?, start_date = ?, end_date = ?, status = ?
-                        WHERE id = ?
-                    """, (new_project_name, new_description, str(new_start_date), str(new_end_date), new_status, project_id))
+                    cursor.execute("""UPDATE projects SET name = ?, description = ?, start_date = ?, end_date = ?, status = ? WHERE id = ?""",
+                                   (new_project_name, new_description, str(new_start_date), str(new_end_date), new_status, project_id))
                     conn.commit()
                     conn.close()
                     st.success(f"Project '{new_project_name}' updated successfully.")
 
-            # Add delete functionality
             delete_confirm = st.button("Delete Project")
             if delete_confirm:
                 conn = get_connection()
@@ -146,6 +100,7 @@ elif choice == "Edit Project":
     else:
         st.warning("No projects found. Please add a project first.")
 
+# Function to add a new task
 elif choice == "Add Task":
     st.subheader("Create a New Task")
 
@@ -167,20 +122,17 @@ elif choice == "Add Task":
         project_id = project_options[project_name]
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO tasks (project_id, name, description)
-            VALUES (?, ?, ?)
-        """, (project_id, task_name, description))
+        cursor.execute("""INSERT INTO tasks (project_id, name, description) VALUES (?, ?, ?)""", (project_id, task_name, description))
         conn.commit()
         conn.close()
         st.success(f"Task '{task_name}' added to project '{project_name}' successfully.")
 
+# Function to assign a team member to a task
 elif choice == "Assign Team Member":
     st.subheader("Assign Team Member to Task")
 
     conn = get_connection()
     cursor = conn.cursor()
-
     cursor.execute("SELECT id, name FROM tasks")
     tasks = cursor.fetchall()
 
@@ -201,22 +153,18 @@ elif choice == "Assign Team Member":
         member_id = member_options[member_name]
         conn = get_connection()
         cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO task_assignments (task_id, member_id)
-            VALUES (?, ?)
-        """, (task_id, member_id))
+        cursor.execute("""INSERT INTO task_assignments (task_id, member_id) VALUES (?, ?)""", (task_id, member_id))
         conn.commit()
         conn.close()
         st.success(f"Member '{member_name}' assigned to task '{task_name}' successfully.")
 
+# Function to view projects
 elif choice == "View Projects":
     st.subheader("Project Overview")
 
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("""
-        SELECT id, name, description, start_date, end_date, status FROM projects
-    """)
+    cursor.execute("""SELECT id, name, description, start_date, end_date, status FROM projects""")
     projects = cursor.fetchall()
     conn.close()
 
@@ -227,3 +175,46 @@ elif choice == "View Projects":
         st.write(f"End Date: {project[4]}")
         st.write(f"Status: {project[5]}")
         st.markdown("---")
+
+# Function to add a new team
+elif choice == "Add Team":
+    st.subheader("Add a New Team")
+
+    with st.form("add_team_form"):
+        team_name = st.text_input("Team Name")
+        team_description = st.text_area("Team Description")
+        submit_team = st.form_submit_button("Add Team")
+
+    if submit_team:
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO teams (name, description) VALUES (?, ?)", (team_name, team_description))
+        conn.commit()
+        conn.close()
+        st.success(f"Team '{team_name}' added successfully.")
+
+# Function to add a new team member
+elif choice == "Add Member":
+    st.subheader("Add a New Team Member")
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name FROM teams")
+    teams = cursor.fetchall()
+    conn.close()
+
+    team_options = {team[1]: team[0] for team in teams}
+
+    with st.form("add_member_form"):
+        member_name = st.text_input("Member Name")
+        selected_team = st.selectbox("Select Team", list(team_options.keys()))
+        submit_member = st.form_submit_button("Add Member")
+
+    if submit_member:
+        team_id = team_options[selected_team]
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO team_members (name, team_id) VALUES (?, ?)", (member_name, team_id))
+        conn.commit()
+        conn.close()
+        st.success(f"Member '{member_name}' added to team '{selected_team}' successfully.")
