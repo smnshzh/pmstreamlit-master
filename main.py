@@ -8,7 +8,7 @@ initialize_database()
 st.title("Project Management App")
 
 # Sidebar for navigation
-menu = ["Add Project", "Add Task", "Assign Team Member", "View Projects"]
+menu = ["Add Project", "Add Task", "Assign Team Member", "View Projects", "Edit Project"]
 choice = st.sidebar.selectbox("Menu", menu)
 
 if choice == "Add Project":
@@ -31,6 +31,54 @@ if choice == "Add Project":
         conn.commit()
         conn.close()
         st.success(f"Project '{project_name}' added successfully.")
+
+elif choice == "Edit Project":
+    st.subheader("Edit an Existing Project")
+
+    # Fetch all projects from the database
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name FROM projects")
+    projects = cursor.fetchall()
+    conn.close()
+
+    project_options = {project[1]: project[0] for project in projects}
+
+    if project_options:
+        # Select project to edit
+        project_name = st.selectbox("Select Project to Edit", list(project_options.keys()))
+        project_id = project_options[project_name]
+
+        # Fetch project details
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, description, start_date, end_date, status FROM projects WHERE id = ?", (project_id,))
+        project_data = cursor.fetchone()
+        conn.close()
+
+        # Pre-fill form with existing project data
+        with st.form("edit_project_form"):
+            new_project_name = st.text_input("Project Name", value=project_data[0])
+            new_description = st.text_area("Description", value=project_data[1])
+            new_start_date = st.date_input("Start Date", value=project_data[2])
+            new_end_date = st.date_input("End Date", value=project_data[3])
+            new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(project_data[4]))
+
+            submit_edit = st.form_submit_button("Update Project")
+
+        if submit_edit:
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE projects
+                SET name = ?, description = ?, start_date = ?, end_date = ?, status = ?
+                WHERE id = ?
+            """, (new_project_name, new_description, str(new_start_date), str(new_end_date), new_status, project_id))
+            conn.commit()
+            conn.close()
+            st.success(f"Project '{new_project_name}' updated successfully.")
+    else:
+        st.warning("No projects found. Please add a project first.")
 
 elif choice == "Add Task":
     st.subheader("Create a New Task")
