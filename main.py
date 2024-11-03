@@ -56,31 +56,35 @@ elif choice == "Edit Project":
         project_data = cursor.fetchone()
         conn.close()
 
-        # Convert start and end dates from string to datetime.date objects, handling None values
-        start_date = datetime.strptime(project_data[2], "%Y-%m-%d").date() if project_data[2] else date.today()
-        end_date = datetime.strptime(project_data[3], "%Y-%m-%d").date() if project_data[3] else date.today()
+        # Check if project_data exists before proceeding
+        if project_data:
+            # Convert start and end dates from string to datetime.date objects, handling None values
+            start_date = datetime.strptime(project_data[2], "%Y-%m-%d").date() if project_data[2] else date.today()
+            end_date = datetime.strptime(project_data[3], "%Y-%m-%d").date() if project_data[3] else date.today()
 
-        # Pre-fill form with existing project data
-        with st.form("edit_project_form"):
-            new_project_name = st.text_input("Project Name", value=project_data[0])
-            new_description = st.text_area("Description", value=project_data[1])
-            new_start_date = st.date_input("Start Date", value=start_date)
-            new_end_date = st.date_input("End Date", value=end_date)
-            new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(project_data[4]))
+            # Pre-fill form with existing project data
+            with st.form("edit_project_form"):
+                new_project_name = st.text_input("Project Name", value=project_data[0])
+                new_description = st.text_area("Description", value=project_data[1])
+                new_start_date = st.date_input("Start Date", value=start_date)
+                new_end_date = st.date_input("End Date", value=end_date)
+                new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(project_data[4]))
 
-            submit_edit = st.form_submit_button("Update Project")
+                submit_edit = st.form_submit_button("Update Project")
 
-        if submit_edit:
-            conn = get_connection()
-            cursor = conn.cursor()
-            cursor.execute("""
-                UPDATE projects
-                SET name = ?, description = ?, start_date = ?, end_date = ?, status = ?
-                WHERE id = ?
-            """, (new_project_name, new_description, str(new_start_date), str(new_end_date), new_status, project_id))
-            conn.commit()
-            conn.close()
-            st.success(f"Project '{new_project_name}' updated successfully.")
+            if submit_edit:
+                conn = get_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    UPDATE projects
+                    SET name = ?, description = ?, start_date = ?, end_date = ?, status = ?
+                    WHERE id = ?
+                """, (new_project_name, new_description, str(new_start_date), str(new_end_date), new_status, project_id))
+                conn.commit()
+                conn.close()
+                st.success(f"Project '{new_project_name}' updated successfully.")
+        else:
+            st.error("Could not find project details. Please try another project.")
     else:
         st.warning("No projects found. Please add a project first.")
 
