@@ -56,12 +56,16 @@ elif choice == "Edit Project":
         project_data = cursor.fetchone()
         conn.close()
 
+        # Convert start and end dates from string to datetime.date objects
+        start_date = datetime.strptime(project_data[2], "%Y-%m-%d").date()
+        end_date = datetime.strptime(project_data[3], "%Y-%m-%d").date()
+
         # Pre-fill form with existing project data
         with st.form("edit_project_form"):
             new_project_name = st.text_input("Project Name", value=project_data[0])
             new_description = st.text_area("Description", value=project_data[1])
-            new_start_date = st.date_input("Start Date", value=project_data[2])
-            new_end_date = st.date_input("End Date", value=project_data[3])
+            new_start_date = st.date_input("Start Date", value=start_date)
+            new_end_date = st.date_input("End Date", value=end_date)
             new_status = st.selectbox("Status", ["Not Started", "In Progress", "Completed"], index=["Not Started", "In Progress", "Completed"].index(project_data[4]))
 
             submit_edit = st.form_submit_button("Update Project")
