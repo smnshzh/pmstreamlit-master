@@ -56,9 +56,9 @@ elif choice == "Edit Project":
         project_data = cursor.fetchone()
         conn.close()
 
-        # Convert start and end dates from string to datetime.date objects
-        start_date = datetime.strptime(project_data[2], "%Y-%m-%d").date()
-        end_date = datetime.strptime(project_data[3], "%Y-%m-%d").date()
+        # Convert start and end dates from string to datetime.date objects, handling None values
+        start_date = datetime.strptime(project_data[2], "%Y-%m-%d").date() if project_data[2] else date.today()
+        end_date = datetime.strptime(project_data[3], "%Y-%m-%d").date() if project_data[3] else date.today()
 
         # Pre-fill form with existing project data
         with st.form("edit_project_form"):
