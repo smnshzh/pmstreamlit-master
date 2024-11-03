@@ -80,6 +80,3 @@ elif selection == "Categories & Questionnaires":
     if st.button("Create Questionnaire"):
         st.success(f"Questionnaire '{questionnaire_title}' created!")
 
-# Run the Streamlit app
-if __name__ == "__main__":
-    st.run()
